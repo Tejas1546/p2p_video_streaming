@@ -1,0 +1,10 @@
+^C:\USERS\91779\DESKTOP\ME\PROJECT\INTERNSHIP-TASK\DEV\P2P-PROJECT\TRACKERSERVER\BUILD\CMAKEFILES\A99D288E7A8550B3CE089DAAA32D9301\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/TrackerServer -BC:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/TrackerServer/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/TrackerServer/build/TrackerServer.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

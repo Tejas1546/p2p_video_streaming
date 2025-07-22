@@ -1,0 +1,3 @@
+C:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/TrackerServer/build/CMakeFiles/TrackerServer.dir
+C:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/TrackerServer/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/TrackerServer/build/CMakeFiles/ZERO_CHECK.dir

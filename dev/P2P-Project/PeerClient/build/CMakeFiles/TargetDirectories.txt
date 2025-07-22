@@ -1,0 +1,3 @@
+C:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/PeerClient/build/CMakeFiles/PeerClient.dir
+C:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/PeerClient/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/91779/Desktop/ME/project/Internship-task/dev/P2P-Project/PeerClient/build/CMakeFiles/ZERO_CHECK.dir

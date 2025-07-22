@@ -1,0 +1,23 @@
+# vcpkg and dependencies
+vcpkg/
+
+# CMake build directories
+build/
+P2P-Project/PeerClient/build/
+P2P-Project/TrackerServer/build/
+
+# Visual Studio Code settings (optional, keep if you want to share settings)
+# .vscode/
+
+# Compiled binaries
+*.exe
+*.obj
+*.pdb
+*.dll
+*.lib
+*.exp
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db 
