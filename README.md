@@ -30,8 +30,8 @@ P2P-Project/
 
 ### 1. Clone the Repository
 ```sh
-git clone <your-repo-url>
-cd <your-repo-folder>
+git clone https://github.com/Tejas1546/internship.git
+cd internship
 ```
 
 ### 2. Install vcpkg and Dependencies
