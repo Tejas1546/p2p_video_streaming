@@ -4,13 +4,21 @@ project(PeerClient LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Enable vcpkg toolchain
-if(DEFINED ENV{VCPKG_ROOT})
-    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "Vcpkg toolchain file")
-endif()
+# Set Qt6 path (adjust if needed)
+set(CMAKE_PREFIX_PATH "C:/Qt/6.9.1/msvc2022_64/lib/cmake")
 
+find_package(Qt6 COMPONENTS Widgets REQUIRED)
 find_package(Poco REQUIRED COMPONENTS Foundation Net)
 find_package(OpenCV REQUIRED)
 
-add_executable(PeerClient main.cpp)
-target_link_libraries(PeerClient PRIVATE Poco::Foundation Poco::Net ${OpenCV_LIBS}) 
+set(SOURCES main.cpp)
+
+add_executable(PeerClient ${SOURCES})
+target_link_libraries(PeerClient PRIVATE Qt6::Widgets Poco::Foundation Poco::Net ${OpenCV_LIBS})
+
+# Enable automoc for Qt
+set_target_properties(PeerClient PROPERTIES
+    AUTOMOC ON
+    AUTOUIC ON
+    AUTORCC ON
+) 
