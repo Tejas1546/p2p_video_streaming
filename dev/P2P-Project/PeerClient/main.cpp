@@ -20,6 +20,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <QtNetwork/QHostAddress>
+#include <QtNetwork/QNetworkInterface>
 
 std::vector<std::string> findPeers(const std::string& trackerIp, int trackerPort) {
     std::vector<std::string> peers;
@@ -37,6 +39,38 @@ std::vector<std::string> findPeers(const std::string& trackerIp, int trackerPort
         std::cerr << "[ERROR] Failed to fetch peer list: " << ex.what() << std::endl;
     }
     return peers;
+}
+
+std::string getLocalIp() {
+    // Get the first non-loopback IPv4 address
+    const auto interfaces = QNetworkInterface::allInterfaces();
+    for (const QNetworkInterface& iface : interfaces) {
+        if (iface.flags().testFlag(QNetworkInterface::IsUp) &&
+            !iface.flags().testFlag(QNetworkInterface::IsLoopBack)) {
+            for (const QNetworkAddressEntry& entry : iface.addressEntries()) {
+                if (entry.ip().protocol() == QAbstractSocket::IPv4Protocol &&
+                    !entry.ip().isLoopback()) {
+                    return entry.ip().toString().toStdString();
+                }
+            }
+        }
+    }
+    return "192.168.1.1";
+}
+
+void registerWithTracker(const std::string& trackerIp, int trackerPort, int listenPort) {
+    try {
+        Poco::Net::SocketAddress addr(trackerIp, trackerPort);
+        Poco::Net::StreamSocket socket(addr);
+        Poco::Net::SocketStream ss(socket);
+        std::string myIp = getLocalIp();
+        ss << "REGISTER " << myIp << ":" << listenPort << "\n" << std::flush;
+        std::string response;
+        std::getline(ss, response);
+        std::cout << "[DEBUG] Tracker response: " << response << std::endl;
+    } catch (const std::exception& ex) {
+        std::cerr << "[DEBUG] Failed to register with tracker: " << ex.what() << std::endl;
+    }
 }
 
 class MainWindow : public QWidget {
@@ -73,7 +107,7 @@ private slots:
         QString ipAddr = ip;
         int portNum = port;
         if (ip.isEmpty() || port == -1) {
-            ipAddr = QInputDialog::getText(this, "Stream To", "Peer IP:", QLineEdit::Normal, "127.0.0.1", &ok1);
+            ipAddr = QInputDialog::getText(this, "Stream To", "Peer IP:", QLineEdit::Normal, "192.168.1.1", &ok1);
             portNum = QInputDialog::getInt(this, "Stream To", "Port:", 9000, 1, 65535, 1, &ok2);
         }
         if (!ok1 || !ok2) return;
@@ -109,6 +143,13 @@ private slots:
         bool ok;
         int port = QInputDialog::getInt(this, "Watch", "Port:", 9000, 1, 65535, 1, &ok);
         if (!ok) return;
+        // Prompt for tracker IP/port to register
+        QString trackerIp = QInputDialog::getText(this, "Tracker IP", "Tracker IP:", QLineEdit::Normal, "192.168.1.1", &ok);
+        if (!ok) return;
+        int trackerPort = QInputDialog::getInt(this, "Tracker Port", "Port:", 9000, 1, 65535, 1, &ok);
+        if (!ok) return;
+        // Register with tracker before starting watcher
+        registerWithTracker(trackerIp.toStdString(), trackerPort, port);
         std::thread([port]() {
             try {
                 Poco::Net::ServerSocket server(port);
@@ -133,7 +174,7 @@ private slots:
 
     void onFindPeers() {
         bool ok;
-        QString trackerIp = QInputDialog::getText(this, "Tracker IP", "Tracker IP:", QLineEdit::Normal, "127.0.0.1", &ok);
+        QString trackerIp = QInputDialog::getText(this, "Tracker IP", "Tracker IP:", QLineEdit::Normal, "192.168.1.1", &ok);
         if (!ok) return;
         int trackerPort = QInputDialog::getInt(this, "Tracker Port", "Port:", 9000, 1, 65535, 1, &ok);
         if (!ok) return;
