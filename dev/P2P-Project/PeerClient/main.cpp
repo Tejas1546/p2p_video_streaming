@@ -22,6 +22,7 @@
 #include <string>
 #include <QtNetwork/QHostAddress>
 #include <QtNetwork/QNetworkInterface>
+#include <windows.h>
 
 std::vector<std::string> findPeers(const std::string& trackerIp, int trackerPort) {
     std::vector<std::string> peers;
@@ -73,6 +74,30 @@ void registerWithTracker(const std::string& trackerIp, int trackerPort, int list
     }
 }
 
+cv::Mat captureScreenMat() {
+    HDC hScreenDC = GetDC(NULL);
+    HDC hMemoryDC = CreateCompatibleDC(hScreenDC);
+    int width = GetSystemMetrics(SM_CXSCREEN);
+    int height = GetSystemMetrics(SM_CYSCREEN);
+    HBITMAP hBitmap = CreateCompatibleBitmap(hScreenDC, width, height);
+    HBITMAP hOldBitmap = (HBITMAP)SelectObject(hMemoryDC, hBitmap);
+    BitBlt(hMemoryDC, 0, 0, width, height, hScreenDC, 0, 0, SRCCOPY);
+    BITMAPINFOHEADER bi = {0};
+    bi.biSize = sizeof(BITMAPINFOHEADER);
+    bi.biWidth = width;
+    bi.biHeight = -height;
+    bi.biPlanes = 1;
+    bi.biBitCount = 24;
+    bi.biCompression = BI_RGB;
+    cv::Mat mat(height, width, CV_8UC3);
+    GetDIBits(hMemoryDC, hBitmap, 0, height, mat.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
+    SelectObject(hMemoryDC, hOldBitmap);
+    DeleteObject(hBitmap);
+    DeleteDC(hMemoryDC);
+    ReleaseDC(NULL, hScreenDC);
+    return mat;
+}
+
 class MainWindow : public QWidget {
     Q_OBJECT
 public:
@@ -84,16 +109,19 @@ public:
 
         auto *findPeersBtn = new QPushButton("Find Peers", this);
         auto *startStreamBtn = new QPushButton("Start Stream", this);
+        auto *shareScreenBtn = new QPushButton("Share Screen", this);
         auto *watchBtn = new QPushButton("Watch", this);
         auto *exitBtn = new QPushButton("Exit", this);
 
         layout->addWidget(findPeersBtn);
         layout->addWidget(startStreamBtn);
+        layout->addWidget(shareScreenBtn);
         layout->addWidget(watchBtn);
         layout->addWidget(exitBtn);
 
         connect(exitBtn, &QPushButton::clicked, this, &QWidget::close);
         connect(startStreamBtn, &QPushButton::clicked, this, static_cast<void (MainWindow::*)()>(&MainWindow::onStartStream));
+        connect(shareScreenBtn, &QPushButton::clicked, this, &MainWindow::onShareScreen);
         connect(watchBtn, &QPushButton::clicked, this, &MainWindow::onWatch);
         connect(findPeersBtn, &QPushButton::clicked, this, &MainWindow::onFindPeers);
     }
@@ -139,6 +167,40 @@ private slots:
         }).detach();
     }
 
+    void onShareScreen() {
+        bool ok1, ok2;
+        QString ip = QInputDialog::getText(this, "Share Screen To", "Peer IP:", QLineEdit::Normal, "127.0.0.1", &ok1);
+        int port = QInputDialog::getInt(this, "Share Screen To", "Port:", 9000, 1, 65535, 1, &ok2);
+        if (!ok1 || !ok2) return;
+        std::thread([ip, port]() {
+            try {
+                Poco::Net::SocketAddress addr(ip.toStdString(), port);
+                Poco::Net::StreamSocket socket(addr);
+                Poco::Net::SocketStream ss(socket);
+                std::cout << "[DEBUG] Streaming screen to " << ip.toStdString() << ":" << port << std::endl;
+                std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 80}; // 80% quality
+                while (true) {
+                    auto start = std::chrono::high_resolution_clock::now();
+                    cv::Mat frame = captureScreenMat();
+                    if (frame.empty()) break;
+                    cv::resize(frame, frame, cv::Size(1280, 720), 0, 0, cv::INTER_LINEAR);
+                    std::vector<uchar> buf;
+                    cv::imencode(".jpg", frame, buf, params);
+                    int dataSize = static_cast<int>(buf.size());
+                    ss << dataSize << '\n';
+                    ss.write(reinterpret_cast<const char*>(buf.data()), dataSize);
+                    ss.flush();
+                    auto end = std::chrono::high_resolution_clock::now();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100) - (end - start)); // ~10 FPS
+                    if (cv::waitKey(1) == 'q') break;
+                }
+                std::cout << "[DEBUG] Stopped screen sharing." << std::endl;
+            } catch (const std::exception& ex) {
+                std::cerr << "[ERROR] " << ex.what() << std::endl;
+            }
+        }).detach();
+    }
+
     void onWatch() {
         bool ok;
         int port = QInputDialog::getInt(this, "Watch", "Port:", 9000, 1, 65535, 1, &ok);
@@ -156,11 +218,12 @@ private slots:
                 Poco::Net::StreamSocket client = server.acceptConnection();
                 Poco::Net::SocketStream ss(client);
                 int rows, cols, type, dataSize;
-                while (ss >> rows >> cols >> type >> dataSize) {
+                cv::namedWindow("Received Video", cv::WINDOW_NORMAL);
+                while (ss >> dataSize) {
                     ss.get();
                     std::vector<uchar> buf(dataSize);
                     ss.read(reinterpret_cast<char*>(buf.data()), buf.size());
-                    cv::Mat frame(rows, cols, type, buf.data());
+                    cv::Mat frame = cv::imdecode(buf, cv::IMREAD_COLOR);
                     cv::imshow("Received Video", frame);
                     if (cv::waitKey(1) == 'q') break;
                 }
