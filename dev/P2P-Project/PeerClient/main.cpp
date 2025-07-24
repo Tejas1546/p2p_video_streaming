@@ -4,6 +4,11 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QInputDialog>
+#include <QListWidget>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QHBoxLayout>
+#include <QMessageBox>
 #include <QThread>
 #include <thread>
 #include <atomic>
@@ -13,6 +18,26 @@
 #include <Poco/Net/SocketAddress.h>
 #include <Poco/Net/SocketStream.h>
 #include <iostream>
+#include <vector>
+#include <string>
+
+std::vector<std::string> findPeers(const std::string& trackerIp, int trackerPort) {
+    std::vector<std::string> peers;
+    try {
+        Poco::Net::SocketAddress addr(trackerIp, trackerPort);
+        Poco::Net::StreamSocket socket(addr);
+        Poco::Net::SocketStream ss(socket);
+        ss << "LIST\n" << std::flush;
+        std::string line;
+        while (std::getline(ss, line)) {
+            if (line == "END") break;
+            peers.push_back(line);
+        }
+    } catch (const std::exception& ex) {
+        std::cerr << "[ERROR] Failed to fetch peer list: " << ex.what() << std::endl;
+    }
+    return peers;
+}
 
 class MainWindow : public QWidget {
     Q_OBJECT
@@ -23,28 +48,38 @@ public:
         label->setAlignment(Qt::AlignCenter);
         layout->addWidget(label);
 
+        auto *findPeersBtn = new QPushButton("Find Peers", this);
         auto *startStreamBtn = new QPushButton("Start Stream", this);
         auto *watchBtn = new QPushButton("Watch", this);
         auto *exitBtn = new QPushButton("Exit", this);
 
+        layout->addWidget(findPeersBtn);
         layout->addWidget(startStreamBtn);
         layout->addWidget(watchBtn);
         layout->addWidget(exitBtn);
 
         connect(exitBtn, &QPushButton::clicked, this, &QWidget::close);
-        connect(startStreamBtn, &QPushButton::clicked, this, &MainWindow::onStartStream);
+        connect(startStreamBtn, &QPushButton::clicked, this, static_cast<void (MainWindow::*)()>(&MainWindow::onStartStream));
         connect(watchBtn, &QPushButton::clicked, this, &MainWindow::onWatch);
+        connect(findPeersBtn, &QPushButton::clicked, this, &MainWindow::onFindPeers);
     }
 
 private slots:
     void onStartStream() {
-        bool ok1, ok2;
-        QString ip = QInputDialog::getText(this, "Stream To", "Peer IP:", QLineEdit::Normal, "127.0.0.1", &ok1);
-        int port = QInputDialog::getInt(this, "Stream To", "Port:", 9000, 1, 65535, 1, &ok2);
+        onStartStream(QString(), -1);
+    }
+    void onStartStream(const QString& ip, int port) {
+        bool ok1 = true, ok2 = true;
+        QString ipAddr = ip;
+        int portNum = port;
+        if (ip.isEmpty() || port == -1) {
+            ipAddr = QInputDialog::getText(this, "Stream To", "Peer IP:", QLineEdit::Normal, "127.0.0.1", &ok1);
+            portNum = QInputDialog::getInt(this, "Stream To", "Port:", 9000, 1, 65535, 1, &ok2);
+        }
         if (!ok1 || !ok2) return;
-        std::thread([ip, port]() {
+        std::thread([ipAddr, portNum]() {
             try {
-                Poco::Net::SocketAddress addr(ip.toStdString(), port);
+                Poco::Net::SocketAddress addr(ipAddr.toStdString(), portNum);
                 Poco::Net::StreamSocket socket(addr);
                 Poco::Net::SocketStream ss(socket);
                 cv::VideoCapture cap(0);
@@ -95,6 +130,38 @@ private slots:
             }
         }).detach();
     }
+
+    void onFindPeers() {
+        bool ok;
+        QString trackerIp = QInputDialog::getText(this, "Tracker IP", "Tracker IP:", QLineEdit::Normal, "127.0.0.1", &ok);
+        if (!ok) return;
+        int trackerPort = QInputDialog::getInt(this, "Tracker Port", "Port:", 9000, 1, 65535, 1, &ok);
+        if (!ok) return;
+        auto peers = findPeers(trackerIp.toStdString(), trackerPort);
+        if (peers.empty()) {
+            QMessageBox::information(this, "Find Peers", "No peers found.");
+            return;
+        }
+        QDialog dialog(this);
+        dialog.setWindowTitle("Available Peers");
+        QVBoxLayout vbox;
+        QListWidget listWidget;
+        for (const auto& peer : peers) listWidget.addItem(QString::fromStdString(peer));
+        vbox.addWidget(&listWidget);
+        QDialogButtonBox buttonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        vbox.addWidget(&buttonBox);
+        dialog.setLayout(&vbox);
+        QObject::connect(&buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+        QObject::connect(&buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+        if (dialog.exec() == QDialog::Accepted && listWidget.currentItem()) {
+            QString peerAddr = listWidget.currentItem()->text();
+            // Parse IP and port from peerAddr (format: "ip:port")
+            QStringList parts = peerAddr.split(":");
+            if (parts.size() == 2) {
+                onStartStream(parts[0], parts[1].toInt());
+            }
+        }
+    }
 };
 
 #include <QMetaObject>
@@ -104,7 +171,7 @@ int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     MainWindow w;
     w.setWindowTitle("P2P Video Streaming Client");
-    w.resize(300, 200);
+    w.resize(300, 250);
     w.show();
     return app.exec();
 }
