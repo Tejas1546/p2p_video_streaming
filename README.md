@@ -1,4 +1,4 @@
-# Tejas J Shetty_Sahyadri College Of Engieering And Management_C++_10
+# Tejas J Shetty_Sahyadri College Of Engieering And Management_C++
 
 # P2P Video Streaming Platform
 
@@ -41,7 +41,6 @@ Internship-task/
 └── installer/                    # Distribution installers
     ├── PeerClientSetup.exe       # PeerClient installer
     └── TrackerServerSetup.exe    # TrackerServer installer
-
 ```
 
 ## Prerequisites
