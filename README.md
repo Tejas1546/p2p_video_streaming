@@ -1,4 +1,4 @@
-# Tejas J Shetty_Sahyadri College Of Engieering And Management_C++
+# Tejas J Shetty_Sahyadri College Of Engieering And Management_C++_10
 
 # P2P Video Streaming Platform
 
@@ -37,13 +37,11 @@ Internship-task/
 │   │       ├── main.cpp          # Server implementation
 │   │       └── CMakeLists.txt    # Build configuration
 │   ├── vcpkg/                    # Package manager (git submodule)
-│   └── .gitignore               # Git ignore rules
-├── installer/                    # Distribution installers
-│   ├── PeerClientSetup.exe      # PeerClient installer
-│   └── TrackerServerSetup.exe   # TrackerServer installer
-└── Release/                     # Release builds
-    ├── PeerClient/              # PeerClient executable and dependencies
-    └── TrackerServer/           # TrackerServer executable and dependencies
+│   └── .gitignore                # Git ignore rules
+└── installer/                    # Distribution installers
+    ├── PeerClientSetup.exe       # PeerClient installer
+    └── TrackerServerSetup.exe    # TrackerServer installer
+
 ```
 
 ## Prerequisites
@@ -118,7 +116,7 @@ A: Internet streaming requires port forwarding on routers and public IP addresse
 2. **Install Qt 6.9.1** (MSVC 2022 64-bit) from [Qt Downloads](https://www.qt.io/download)
 3. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/Tejas1546/internship.git
    cd Internship-task/dev
    ```
 
