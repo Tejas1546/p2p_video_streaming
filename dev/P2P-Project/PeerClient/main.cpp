@@ -135,7 +135,7 @@ private slots:
         QString ipAddr = ip;
         int portNum = port;
         if (ip.isEmpty() || port == -1) {
-            ipAddr = QInputDialog::getText(this, "Stream To", "Peer IP:", QLineEdit::Normal, "192.168.1.1", &ok1);
+            ipAddr = QInputDialog::getText(this, "Stream To", "Peer IP:", QLineEdit::Normal, "127.0.0.1", &ok1);
             portNum = QInputDialog::getInt(this, "Stream To", "Port:", 9000, 1, 65535, 1, &ok2);
         }
         if (!ok1 || !ok2) return;
@@ -149,15 +149,19 @@ private slots:
                     std::cerr << "[ERROR] Could not open camera." << std::endl;
                     return;
                 }
+                std::vector<int> params = {cv::IMWRITE_JPEG_QUALITY, 80}; // 80% quality
                 cv::Mat frame;
                 while (true) {
                     cap >> frame;
                     if (frame.empty()) break;
-                    int rows = frame.rows, cols = frame.cols, type = frame.type();
-                    int dataSize = frame.total() * frame.elemSize();
-                    ss << rows << ' ' << cols << ' ' << type << ' ' << dataSize << '\n';
-                    ss.write(reinterpret_cast<const char*>(frame.data), dataSize);
+                    cv::resize(frame, frame, cv::Size(1280, 720), 0, 0, cv::INTER_LINEAR);
+                    std::vector<uchar> buf;
+                    cv::imencode(".jpg", frame, buf, params);
+                    int dataSize = static_cast<int>(buf.size());
+                    ss << dataSize << '\n';
+                    ss.write(reinterpret_cast<const char*>(buf.data()), dataSize);
                     ss.flush();
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100)); // ~10 FPS
                     if (cv::waitKey(1) == 'q') break;
                 }
                 cap.release();
