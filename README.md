@@ -1,4 +1,3 @@
-# Tejas J Shetty_Sahyadri College Of Engieering And Management_C++_TASK 10
 
 # P2P Video Streaming Platform
 
