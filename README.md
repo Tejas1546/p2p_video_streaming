@@ -144,10 +144,6 @@ A: Internet streaming requires port forwarding on routers and public IP addresse
    windeployqt.exe P2P-Project/PeerClient/build/Release/PeerClient.exe
    ```
 
-## Credits
-
-**Completed as part of the MatreComm internship selection process**
-
 This project demonstrates advanced C++ development skills including:
 - Network programming with Poco C++
 - Video processing with OpenCV
